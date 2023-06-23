@@ -15,6 +15,7 @@ const SENSE_DISTANCE: f64 = 3.0;
 const SENSE_ANGLE: f64 = PI / 3.0;
 const SPEED: f64 = 0.5;
 const NOF_PARTICLES: usize = 1000;
+const DEPOSIT: i32 = 10000;
 
 struct Particle {
     x: f64,
@@ -31,8 +32,8 @@ impl Particle {
                 let x = self.x + (self.heading + angle_offset).cos() * SENSE_DISTANCE;
                 let y = self.y + (self.heading + angle_offset).sin() * SENSE_DISTANCE;
                 let mut sum = 0;
-                for xd in -6..=6 {
-                    for yd in -6..=6 {
+                for xd in -1..=1 {
+                    for yd in -1..=1 {
                         sum += grid.at(x + xd as f64, y + yd as f64);
                     }
                 }
@@ -53,9 +54,10 @@ impl Particle {
 
         // left turn
         if intensities[0] > intensities[2] {
-            self.heading += rng.gen_range(0.0..=SENSE_ANGLE);
+            self.heading -= rng.gen_range(0.0..=0.5);
         } else {
-            self.heading -= rng.gen_range(0.0..=SENSE_ANGLE);
+            // right turn
+            self.heading += rng.gen_range(0.0..=0.5);
         }
     }
 
@@ -76,7 +78,7 @@ impl Particle {
 }
 
 struct IntensityGrid {
-    data: [[u8; GRID_SIZE.0]; GRID_SIZE.1],
+    data: [[i32; GRID_SIZE.0]; GRID_SIZE.1],
 }
 
 impl IntensityGrid {
@@ -95,12 +97,12 @@ impl IntensityGrid {
             let x = particle.x as usize;
             let y = particle.y as usize;
 
-            self.data[x][y] = u8::MAX;
+            self.data[x][y] = DEPOSIT;
         })
     }
 
     fn diffuse(&mut self) {
-        let mut tmp = [[0u8; GRID_SIZE.0]; GRID_SIZE.1];
+        let mut tmp = [[0i32; GRID_SIZE.0]; GRID_SIZE.1];
 
         for (x, row) in self.data.iter().enumerate() {
             for (y, _) in row.iter().enumerate() {
@@ -120,14 +122,14 @@ impl IntensityGrid {
                     }
                 }
 
-                tmp[x][y] = (sum / nof_cells).clamp(0, 255) as u8;
+                tmp[x][y] = sum / nof_cells;
             }
         }
 
         self.data.copy_from_slice(&tmp);
     }
 
-    fn at(&self, x: f64, y: f64) -> u8 {
+    fn at(&self, x: f64, y: f64) -> i32 {
         let x = x as usize;
         let y = y as usize;
 
@@ -157,7 +159,8 @@ fn draw_grid(grid: &IntensityGrid, frame: &mut [u8]) {
         for y in 0..GRID_SIZE.1 {
             let pixel_index: usize = 4 * (GRID_SIZE.0 * y + x);
             let pixel = &mut frame[pixel_index..(pixel_index + 4)];
-            pixel.copy_from_slice(&[grid.data[x][y]; 4]);
+            let tmp = ((grid.data[x][y] * u8::MAX as i32) / DEPOSIT).clamp(0, u8::MAX as i32) as u8;
+            pixel.copy_from_slice(&[tmp; 4]);
         }
     }
 }
@@ -210,7 +213,7 @@ fn main() {
         grid.deposit(&particles);
         grid.decay();
         if diffuse_counter == 0 {
-               grid.diffuse();
+            //grid.diffuse();
         }
         diffuse_counter = (diffuse_counter + 1) % 2;
         //println!("... Finished");
