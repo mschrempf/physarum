@@ -11,9 +11,9 @@ use winit::{
 use winit_input_helper::WinitInputHelper;
 
 const GRID_SIZE: (usize, usize) = (500, 500);
-const SENSE_DISTANCE: f64 = 3.0;
-const SENSE_ANGLE: f64 = PI / 3.0;
-const SPEED: f64 = 0.5;
+const SENSE_DISTANCE: f64 = 50.0;
+const SENSE_ANGLE: f64 = PI / 10.0;
+const SPEED: f64 = 1.0;
 const NOF_PARTICLES: usize = 1000;
 const DEPOSIT: i32 = 10000;
 
@@ -32,8 +32,8 @@ impl Particle {
                 let x = self.x + (self.heading + angle_offset).cos() * SENSE_DISTANCE;
                 let y = self.y + (self.heading + angle_offset).sin() * SENSE_DISTANCE;
                 let mut sum = 0;
-                for xd in -1..=1 {
-                    for yd in -1..=1 {
+                for xd in -0..=0 {
+                    for yd in -0..=0 {
                         sum += grid.at(x + xd as f64, y + yd as f64);
                     }
                 }
@@ -43,6 +43,7 @@ impl Particle {
 
         // no change
         if (intensities[1] > intensities[0]) && (intensities[1] > intensities[2]) {
+            self.heading += rng.gen_range(-SENSE_ANGLE..=SENSE_ANGLE);
             return;
         }
 
@@ -69,11 +70,22 @@ impl Particle {
         let x_range = 0.0..(GRID_SIZE.0 as f64 - 1.0);
         let y_range = 0.0..(GRID_SIZE.1 as f64 - 1.0);
 
-        if !x_range.contains(&self.x) || !y_range.contains(&self.y) {
-            self.x = self.x.clamp(x_range.start, x_range.end);
-            self.y = self.y.clamp(y_range.start, y_range.end);
-            self.heading = rand::thread_rng().gen_range(0.0..(2.0 * PI));
+        if self.x < 0.0 {
+            self.x = GRID_SIZE.0 as f64 - 1.0;
+        } else if self.x > GRID_SIZE.0 as f64 - 1.0 {
+            self.x = 0.0;
         }
+        if self.y < 0.0 {
+            self.y = GRID_SIZE.1 as f64 - 1.0;
+        } else if self.y > GRID_SIZE.1 as f64 - 1.0 {
+            self.y = 0.0;
+        }
+
+        //if !x_range.contains(&self.x) || !y_range.contains(&self.y) {
+        //    self.x = self.x.clamp(x_range.start, x_range.end);
+        //    self.y = self.y.clamp(y_range.start, y_range.end);
+        //    self.heading = rand::thread_rng().gen_range(0.0..(2.0 * PI));
+        //}
     }
 }
 
@@ -213,7 +225,7 @@ fn main() {
         grid.deposit(&particles);
         grid.decay();
         if diffuse_counter == 0 {
-            //grid.diffuse();
+            grid.diffuse();
         }
         diffuse_counter = (diffuse_counter + 1) % 2;
         //println!("... Finished");
